@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<title>Cristalon — Alpha 0.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--k:1;--ink:#26283a;--paper:#fbfaf4;--frame:#3b4a78;--frame2:#a9bbe6}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0b1020}
+body{min-height:100dvh;color:#e9eefc;font-family:'Pixelify Sans',system-ui,sans-serif;display:flex;justify-content:center;
+  background:radial-gradient(ellipse at 50% -10%,#2a3770 0,#121a38 45%,#0b1020 100%);touch-action:manipulation;-webkit-user-select:none;user-select:none;overflow-x:hidden}
+#app{display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px 16px 18px;width:100%}
+#wrap{width:calc(480px * var(--k));height:calc(320px * var(--k));position:relative;border-radius:12px;overflow:hidden;
+  box-shadow:0 0 0 3px #0d1430,0 0 0 6px #4c5fa8,0 18px 40px #000a}
+#screen{position:absolute;left:0;top:0;width:480px;height:320px;transform:scale(var(--k));transform-origin:0 0;overflow:hidden;background:#000}
+#world{position:absolute;inset:0;width:480px;height:320px;image-rendering:pixelated;image-rendering:crisp-edges}
+.hidden{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+
+/* ===== caixa de texto ===== */
+#textbox{position:absolute;left:8px;right:8px;bottom:8px;height:84px;z-index:8;background:var(--paper);color:var(--ink);
+  border:4px solid var(--frame);border-radius:12px;box-shadow:inset 0 0 0 3px var(--frame2),0 3px 0 #0004;padding:12px 20px;
+  font-size:20px;line-height:28px;text-shadow:1px 1px 0 #dcdcd2;white-space:pre-line}
+#textbox.narrow{right:232px}
+#textbox .arrow{position:absolute;right:14px;bottom:8px;color:#d14b4b;font-size:14px;animation:bob .6s infinite alternate}
+@keyframes bob{to{transform:translateY(3px)}}
+
+/* ===== escolhas ===== */
+#choices{position:absolute;right:8px;bottom:100px;z-index:9;min-width:150px;max-width:464px;background:var(--paper);color:var(--ink);
+  border:4px solid var(--frame);border-radius:12px;box-shadow:inset 0 0 0 3px var(--frame2),0 3px 0 #0004;padding:8px 8px}
+.ch-grid{display:grid;gap:2px}
+.ch{display:flex;align-items:center;gap:8px;text-align:left;background:none;border:0;padding:5px 8px 5px 26px;font-size:19px;color:var(--ink);position:relative;border-radius:6px;min-height:34px}
+.ch.sel::before{content:'▶';position:absolute;left:7px;font-size:13px;color:#2b2f45}
+.ch.sel{background:#e8ecfa}
+.ch-title{font-size:16px;color:#55607e;padding:2px 8px 6px;border-bottom:2px dashed #cfd6ea;margin-bottom:4px}
+#choices.bmenu{right:8px;bottom:8px;width:220px;height:84px;padding:6px}
+#choices.bmenu .ch{font-size:19px;font-weight:700;min-height:30px;padding:2px 6px 2px 24px}
+#choices.moves{left:8px;right:8px;bottom:8px;height:84px;padding:6px;max-width:none}
+#choices.moves .ch{justify-content:space-between;min-height:31px;padding:2px 10px 2px 24px;font-size:17px}
+#choices.moves .ch small{font-size:12px;color:#6b718a}
+#choices.party,#choices.dex{left:8px;right:8px;top:8px;bottom:8px;max-width:none;overflow:auto}
+#choices.party .ch{min-height:40px;padding:3px 8px 3px 26px}
+.pm-info{flex:1;display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:10px}
+.pm-info b{font-size:18px}.pm-info small{font-size:14px;color:#5d647d}
+.pm-info .hpbar{grid-column:1/3;width:100%}
+.pm-faint{opacity:.55}
+#choices.start{top:8px;bottom:auto;right:8px;min-width:180px}
+#choices.dex .ch{flex-direction:column;justify-content:center;gap:2px;padding:6px 4px;font-size:15px;min-height:84px;text-align:center}
+#choices.dex .ch.sel::before{left:4px;top:6px}
+#choices.dex .ch .num{font-size:12px;color:#7a819a}
+#choices.title-menu{left:50%;right:auto;transform:translateX(-50%);bottom:26px;min-width:220px}
+#choices.center{left:50%;right:auto;transform:translateX(-50%);bottom:100px}
+.pill{display:inline-block;font-size:12px;line-height:16px;padding:0 7px;border-radius:9px;background:var(--tc,#999);color:#fff;
+  text-shadow:0 1px 0 #0006;font-weight:700;letter-spacing:.03em;vertical-align:middle}
+
+/* ===== gemas (retratos das criaturas) ===== */
+.gem{--cut:22%;position:relative;width:100%;height:100%;padding:5px;clip-path:polygon(var(--cut) 0,calc(100% - var(--cut)) 0,100% var(--cut),100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,var(--cut) 100%,0 calc(100% - var(--cut)),0 var(--cut));
+  background:linear-gradient(140deg,#ffffff 0,var(--tc) 45%,#1d2547 100%)}
+.gem-in{width:100%;height:100%;clip-path:inherit;background:radial-gradient(circle at 50% 40%,#ffffff 0,color-mix(in srgb,var(--tc) 35%,#fff) 45%,color-mix(in srgb,var(--tc) 70%,#1d2547) 100%);overflow:hidden;display:grid;place-items:center}
+.gem-in img{width:100%;height:100%;object-fit:cover;display:block}
+.gem-in svg{width:92%;height:92%;display:block}
+.gem.flip .gem-in img{transform:scaleX(-1)}
+.thumb{width:36px;height:36px;flex:none}.thumb .gem{padding:3px}
+
+/* ===== batalha ===== */
+#battle{position:absolute;inset:0;z-index:6;overflow:hidden;background:linear-gradient(180deg,#a8dcff 0,#d8f1ff 34%,#e8f7d6 36%,#bfe6a6 100%)}
+#battle::before{content:'';position:absolute;left:-40px;right:-40px;top:96px;height:30px;background:radial-gradient(ellipse at 50% 100%,#9fd88a 0,transparent 70%);opacity:.6}
+.plat{position:absolute;border-radius:50%;background:radial-gradient(ellipse at 50% 40%,#d7f2b8 0,#9fd47f 55%,#7cb862 100%);box-shadow:inset 0 -5px 0 #6aa553,0 4px 0 #0001}
+.plat.foe{left:276px;top:118px;width:180px;height:42px}
+.plat.me{left:16px;top:208px;width:210px;height:46px}
+.mon{position:absolute;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--glow,#fff) 70%,transparent)) drop-shadow(0 6px 4px #0003)}
+.mon.foe{left:308px;top:14px;width:118px;height:118px}
+.mon.me{left:52px;top:84px;width:140px;height:140px}
+.info{position:absolute;background:var(--paper);color:var(--ink);border:3px solid #39446a;border-radius:12px 4px 12px 4px;box-shadow:0 3px 0 #0003;padding:6px 12px}
+.info.foe{left:14px;top:18px;width:232px}
+.info.me{right:14px;top:132px;width:236px}
+.info .nm{display:flex;justify-content:space-between;align-items:baseline;font-size:19px;font-weight:700}
+.info .nm .lv{font-size:15px;color:#4c536e}
+.info .row{display:flex;align-items:center;gap:6px;margin-top:3px}
+.info .lbl{font-size:11px;font-weight:700;color:#e9a83b;background:#3b3f52;border-radius:4px;padding:0 4px;line-height:14px}
+.hpbar{display:block;height:9px;flex:1;background:#4b5163;border-radius:5px;padding:2px;overflow:hidden}
+.hpbar i{display:block;height:100%;border-radius:3px;background:#5ce07a;transition:width .5s linear,background-color .3s}
+.info .hpt{text-align:right;font-size:16px;margin-top:1px}
+.xpbar{height:5px;background:#4b5163;border-radius:3px;overflow:hidden;margin-top:3px}
+.xpbar i{display:block;height:100%;background:#5cc6ff;transition:width .6s linear}
+.caught{width:12px;height:12px;display:inline-block;background:linear-gradient(135deg,#bff4ff,#4aa8e8);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);margin-left:6px}
+.fx{position:absolute;width:120px;height:120px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,#fff 0,var(--tc) 35%,transparent 70%)}
+.fx.foe{left:307px;top:14px}.fx.me{left:62px;top:94px}
+.orb{position:absolute;left:350px;top:92px;width:22px;height:30px;z-index:2;background:linear-gradient(135deg,#ffffff 0,#9fe9ff 35%,#3a8fe0 70%,#5a3fc0 100%);
+  clip-path:polygon(50% 0,100% 35%,50% 100%,0 35%);filter:drop-shadow(0 0 6px #9feaff)}
+
+/* ===== overlays ===== */
+#overlay,#panel{position:absolute;inset:0;pointer-events:none}
+#overlay{z-index:5}#panel{z-index:7}
+#overlay:not(:empty),#panel:not(:empty){pointer-events:auto}
+#fade{position:absolute;inset:0;z-index:20;background:#000;opacity:0;pointer-events:none}
+
+.title{position:absolute;inset:0;background:#0b1020;overflow:hidden}
+.title .bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.2s;filter:saturate(1.1)}
+.title .bg.on{opacity:1}
+.title::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#0b1020e6 0,#0b102088 30%,#0b102000 55%,#0b1020dd 100%)}
+.logo{position:absolute;left:0;right:0;top:34px;text-align:center;z-index:2}
+.logo h1{margin:0;font-size:66px;line-height:1;letter-spacing:.06em;font-weight:700;color:#fff;
+  background:linear-gradient(180deg,#ffffff 0,#bff1ff 40%,#6fb6ff 60%,#b993ff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 3px 0 #1d2a66) drop-shadow(0 0 12px #6ad7ff)}
+.logo p{margin:6px 0 0;font-size:15px;letter-spacing:.3em;color:#e9f3ff;text-shadow:0 2px 0 #0008}
+.logo svg{width:34px;height:44px;vertical-align:-6px;margin:0 4px}
+.press{position:absolute;left:0;right:0;bottom:30px;text-align:center;z-index:2;font-size:18px;color:#fff;text-shadow:0 2px 0 #000;animation:blink 1.1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.ver{position:absolute;right:10px;bottom:6px;font-size:11px;color:#9fb0d8;z-index:2}
+
+.nameform{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,#2b3a7a,#0d1330);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.nameform label{font-size:20px}
+.nameform input{font:inherit;font-size:24px;width:240px;padding:8px 12px;border-radius:10px;border:3px solid #8fa6ff;background:#f7f8ff;color:#22263a;text-align:center;outline:none;-webkit-user-select:text;user-select:text}
+.nameform button{font-size:18px;padding:8px 26px;border-radius:10px;border:0;background:linear-gradient(180deg,#9fe3ff,#4f8ef0);color:#10183a;font-weight:700;box-shadow:0 3px 0 #233a7a}
+.intro{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 35%,#34418a 0,#151c44 55%,#080b1c 100%)}
+.intro .big{position:absolute;left:50%;top:22px;width:150px;height:150px;transform:translateX(-50%)}
+.intro .trio{position:absolute;left:0;right:0;top:40px;display:flex;justify-content:center;gap:16px}
+.intro .trio .gem{width:110px;height:110px}
+
+.interior{position:absolute;inset:0;background:
+  linear-gradient(180deg,var(--wall,#f3e3c3) 0,var(--wall,#f3e3c3) 46%,#8b6440 46%,#8b6440 48%,transparent 48%),
+  repeating-conic-gradient(var(--f1,#d9b98a) 0 25%,var(--f2,#cfa874) 0 50%) 0 0/32px 32px}
+.interior .room{position:absolute;left:16px;top:12px;font-size:16px;color:#3a3020;background:#fff9;border-radius:8px;padding:4px 10px}
+.interior .deco{position:absolute;left:50%;top:40px;transform:translateX(-50%);width:110px;height:110px}
+.interior.lab{--wall:#e6eef8;--f1:#c9d4e4;--f2:#b9c6da}
+.interior.centro{--wall:#ffe7f1;--f1:#f3d1df;--f2:#ebc0d2}
+.interior.casaK{--wall:#dfe8ff;--f1:#c7b293;--f2:#bba383}
+
+.starter{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 20%,#eef6ff,#bcd3f2 60%,#8fa9d9);color:var(--ink);text-align:center}
+.starter h2{margin:10px 0 6px;font-size:22px;color:#2b3466}
+.cards{display:flex;justify-content:center;gap:12px}
+.card{width:142px;padding:6px;border-radius:12px;border:3px solid #fff;background:#fff;box-shadow:0 4px 0 #6d82b8;transition:transform .15s,box-shadow .15s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.card img{width:126px;height:108px;object-fit:cover;border-radius:8px;display:block}
+.card b{font-size:18px;color:#26283a}
+.card.sel{transform:translateY(-6px) scale(1.04);border-color:var(--tc);box-shadow:0 0 0 3px var(--tc),0 0 22px var(--tc),0 6px 0 #6d82b8}
+.sdesc{margin:10px 22px 0;font-size:15px;line-height:20px;color:#2e3450;min-height:40px}
+.sum{position:absolute;inset:8px;background:var(--paper);color:var(--ink);border:4px solid var(--frame);border-radius:12px;box-shadow:inset 0 0 0 3px var(--frame2);display:flex;gap:16px;padding:16px}
+.sum .sum-art{width:150px;height:150px;flex:none}
+.sum h3{margin:0 0 4px;font-size:24px}.sum h3 small{font-size:16px;color:#5d647d}
+.sum p{margin:6px 0;font-size:16px;line-height:21px}
+.sum ul{margin:6px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:15px}
+.sum .close{position:absolute;right:12px;bottom:8px;font-size:12px;color:#7a819a}
+
+/* ===== controles ===== */
+#pad{display:none;width:100%;max-width:520px;justify-content:space-between;align-items:center;gap:8px}
+.touch #pad{display:flex}
+.dpad{display:grid;grid-template-columns:repeat(3,min(50px,12vw));grid-template-rows:repeat(3,min(50px,12vw))}
+.dpad button,.ab button,.st{border:0;background:#2a3460;color:#cfd8ff;box-shadow:0 4px 0 #141a33;font-size:20px;touch-action:none}
+.dpad button{border-radius:10px}
+.dpad .u{grid-area:1/2}.dpad .l{grid-area:2/1}.dpad .r{grid-area:2/3}.dpad .d{grid-area:3/2}
+.dpad .c{grid-area:2/2;background:#232c52;box-shadow:none;border-radius:0}
+.mid{display:flex;flex-direction:column;align-items:center;gap:8px}
+.st{border-radius:14px;font-size:12px;padding:6px 14px;letter-spacing:.1em}
+.ab{display:flex;gap:10px;align-items:center;transform:rotate(-14deg);padding:0 4px}
+.ab button{width:min(58px,14vw);height:min(58px,14vw);border-radius:50%;font-size:22px;font-weight:700}
+.ab .a{background:#d8475a;color:#fff;box-shadow:0 4px 0 #7a1f2c;margin-top:-26px}
+.ab .b{background:#4558b8;color:#fff;box-shadow:0 4px 0 #222c66}
+#pad button:active,#pad button.on{transform:translateY(3px);box-shadow:0 1px 0 #0008}
+#help{font-size:13px;color:#9fb0d8;text-align:center;max-width:520px;line-height:1.5}
+.touch #help{display:none}
+kbd{background:#25305c;border-radius:4px;padding:1px 6px;color:#e8ecff;font-family:inherit}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="wrap">
+    <div id="screen">
+      <canvas id="world" width="240" height="160"></canvas>
+      <div id="overlay"></div>
+      <div id="battle" class="hidden">
+        <div class="plat foe"></div><div class="plat me"></div>
+        <div class="mon foe" id="foeMon"></div>
+        <div class="mon me" id="meMon"></div>
+        <div class="info foe" id="foeInfo">
+          <div class="nm"><span><span class="n"></span><span class="cg"></span></span><span class="lv"></span></div>
+          <div class="row"><span class="tp"></span><span class="lbl">HP</span><span class="hpbar"><i></i></span></div>
+        </div>
+        <div class="info me" id="meInfo">
+          <div class="nm"><span class="n"></span><span class="lv"></span></div>
+          <div class="row"><span class="tp"></span><span class="lbl">HP</span><span class="hpbar"><i></i></span></div>
+          <div class="hpt"></div>
+          <div class="xpbar"><i></i></div>
+        </div>
+      </div>
+      <div id="panel"></div>
+      <div id="textbox" class="hidden"><div id="text"></div><span class="arrow hidden">▼</span></div>
+      <div id="choices" class="hidden"></div>
+      <div id="fade"></div>
+    </div>
+  </div>
+  <div id="pad">
+    <div class="dpad">
+      <button class="u" data-b="up" aria-label="Cima">▲</button>
+      <button class="l" data-b="left" aria-label="Esquerda">◀</button>
+      <span class="c"></span>
+      <button class="r" data-b="right" aria-label="Direita">▶</button>
+      <button class="d" data-b="down" aria-label="Baixo">▼</button>
+    </div>
+    <div class="mid"><button class="st" data-b="start">MENU</button></div>
+    <div class="ab"><button class="b" data-b="b">B</button><button class="a" data-b="a">A</button></div>
+  </div>
+  <div id="help"><kbd>Setas</kbd>/<kbd>WASD</kbd> andar · <kbd>Z</kbd>/<kbd>Espaço</kbd> confirmar (A) · <kbd>X</kbd>/<kbd>Esc</kbd> voltar (B) · <kbd>Enter</kbd> menu</div>
+</div>
+
+<script>
+'use strict';
+/* =========================================================
+   CRISTALON — Alpha 0.1
+   Estrutura: dados → utilidades → entrada → texto/escolhas →
+   mundo (mapa, desenho, movimento, eventos) → batalha → menus → título
+   ========================================================= */
+const $=s=>document.querySelector(s);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const anim=(el,frames,opt)=>el.animate(frames,opt).finished.catch(()=>{});
+
+/* ===================== DADOS ===================== */
+const TYPES={Normal:'#a8a28a',Fogo:'#f26b2f',Água:'#3a9cf5',Planta:'#4fb84c',Pedra:'#a9824f',Elétrico:'#e6b80f',Cristal:'#a57cf2'};
+// multiplicador do atacante (linha) contra o defensor (coluna)
+const CHART={
+  Fogo:{Planta:2,Cristal:2,Água:.5,Pedra:.5,Fogo:.5},
+  Água:{Fogo:2,Pedra:2,Água:.5,Planta:.5},
+  Planta:{Água:2,Pedra:2,Fogo:.5,Planta:.5},
+  Pedra:{Fogo:2,Elétrico:2,Planta:.5},
+  Elétrico:{Água:2,Cristal:2,Pedra:.5,Planta:.5,Elétrico:.5},
+  Cristal:{Pedra:2,Normal:2,Fogo:.5,Cristal:.5},
+  Normal:{Pedra:.5}
+};
+const MOVES={
+  investida:{n:'Investida',t:'Normal',p:40,a:100},
+  bicada:{n:'Bicada',t:'Normal',p:45,a:100},
+  rajada:{n:'Rajada',t:'Normal',p:55,a:95},
+  rosnado:{n:'Rosnado',t:'Normal',p:0,a:100,fx:{who:'foe',stat:'atk',d:-1}},
+  endurecer:{n:'Endurecer',t:'Normal',p:0,a:100,fx:{who:'self',stat:'def',d:1}},
+  bolha:{n:'Bolha',t:'Água',p:40,a:100},
+  jato:{n:"Jato d'Água",t:'Água',p:60,a:100},
+  brasa:{n:'Brasa',t:'Fogo',p:40,a:100},
+  chama:{n:'Roda de Chamas',t:'Fogo',p:60,a:100},
+  cipo:{n:'Chicote de Cipó',t:'Planta',p:45,a:100},
+  navalha:{n:'Folha Navalha',t:'Planta',p:55,a:95},
+  absorver:{n:'Absorver',t:'Planta',p:30,a:100,drain:true},
+  faisca:{n:'Faísca',t:'Elétrico',p:45,a:100},
+  pedrada:{n:'Pedrada',t:'Pedra',p:50,a:90},
+  brilho:{n:'Brilho Cristalino',t:'Cristal',p:45,a:100},
+};
+const SPECIES={
+  axolume:{name:'Axolume',type:'Água',img:'assets/axolume.webp',art:'assets/axolume-arte.webp',pos:'48% 50%',
+    base:{hp:46,atk:48,def:46,spd:58},yield:64,catch:45,
+    learn:[[1,'investida'],[1,'rosnado'],[5,'bolha'],[9,'brilho'],[12,'jato']],
+    desc:'Seu núcleo de cristal purifica qualquer água por onde passa. As guelras brilham quando está feliz.'},
+  lavascudo:{name:'Lavascudo',type:'Fogo',img:'assets/lavascudo.webp',art:'assets/lavascudo-arte.webp',pos:'42% 50%',
+    base:{hp:50,atk:54,def:62,spd:36},yield:64,catch:45,
+    learn:[[1,'investida'],[1,'endurecer'],[5,'brasa'],[9,'pedrada'],[12,'chama']],
+    desc:'Carrega magma sob o casco de rocha. O cristal das costas brilha mais forte quando está pronto para lutar.'},
+  folhix:{name:'Folhix',type:'Planta',img:'assets/folhix.webp',art:'assets/folhix-arte.webp',pos:'50% 45%',
+    base:{hp:45,atk:52,def:44,spd:64},yield:64,catch:45,
+    learn:[[1,'investida'],[1,'rosnado'],[5,'cipo'],[9,'absorver'],[12,'navalha']],
+    desc:'Ágil e curioso. A grande folha da cauda capta a luz do sol e a transforma em energia.'},
+  piuvento:{name:'Piuvento',type:'Normal',base:{hp:40,atk:42,def:38,spd:56},yield:50,catch:255,
+    learn:[[1,'investida'],[3,'rosnado'],[6,'bicada'],[10,'rajada']],
+    desc:'Ave comum nas rotas. As penas da crista sempre apontam a direção do vento.'},
+  brotim:{name:'Brotim',type:'Planta',base:{hp:44,atk:40,def:48,spd:30},yield:55,catch:200,
+    learn:[[1,'investida'],[4,'absorver'],[8,'cipo']],
+    desc:'Dorme enterrado durante a noite. Quando acorda, abre as folhas como quem diz bom dia.'},
+  gotin:{name:'Gotin',type:'Água',base:{hp:42,atk:38,def:44,spd:48},yield:55,catch:200,
+    learn:[[1,'investida'],[4,'bolha'],[9,'jato']],
+    desc:'Nasce de gotas de orvalho em noites de lua cheia. É macio e um pouco gelado.'},
+  faiscol:{name:'Faiscol',type:'Elétrico',base:{hp:38,atk:50,def:36,spd:70},yield:58,catch:170,
+    learn:[[1,'investida'],[3,'rosnado'],[5,'faisca']],
+    desc:'Acumula eletricidade correndo pela grama. A cauda em zigue-zague solta faíscas.'},
+  pedrisco:{name:'Pedrisco',type:'Pedra',base:{hp:44,atk:56,def:70,spd:22},yield:60,catch:150,
+    learn:[[1,'investida'],[1,'endurecer'],[5,'pedrada']],
+    desc:'Parece uma pedra comum até abrir os olhos. O fragmento de cristal na cabeça é seu orgulho.'},
+  lumicris:{name:'Lumicris',type:'Cristal',base:{hp:50,atk:55,def:55,spd:55},yield:90,catch:45,
+    learn:[[1,'brilho'],[1,'endurecer'],[7,'investida']],
+    desc:'Raríssimo. Dizem que é um fragmento vivo do Grande Cristal que deu nome a este mundo.'},
+};
+const DEX_ORDER=['axolume','lavascudo','folhix','piuvento','brotim','gotin','faiscol','pedrisco','lumicris'];
+const COUNTER={axolume:'folhix',lavascudo:'axolume',folhix:'lavascudo'};
+const ROUTE1=[['piuvento',35],['brotim',24],['gotin',20],['faiscol',13],['pedrisco',6],['lumicris',2]];
+const ITEMS={cristal:{n:'Cristal de Captura',price:100},pocao:{n:'Poção',price:60}};
+
+/* ---- desenhos vetoriais das criaturas selvagens ---- */
+const OL='stroke="#24304d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"';
+const eye=(x,y,r=6.5,c='#1d2b5e')=>`<ellipse cx="${x}" cy="${y}" rx="${r*.78}" ry="${r}" fill="${c}"/><ellipse cx="${x-r*.22}" cy="${y-r*.38}" rx="${r*.34}" ry="${r*.4}" fill="#fff"/><circle cx="${x+r*.25}" cy="${y+r*.45}" r="${r*.16}" fill="#fff"/>`;
+const mouth=(x,y,w=5)=>`<path d="M${x-w} ${y} Q${x} ${y+w*1.4} ${x+w} ${y}Z" fill="#e2566c" ${OL} stroke-width="1.8"/>`;
+const blush=(x,y)=>`<ellipse cx="${x}" cy="${y}" rx="4" ry="2.4" fill="#ff8fa3" opacity=".7"/>`;
+const SVGS={
+  piuvento:()=>`<svg viewBox="0 0 100 100">
+    <path d="M40 34 Q38 14 48 26 Q52 8 56 27 Q66 14 60 35Z" fill="#b5834e" ${OL}/>
+    <ellipse cx="23" cy="60" rx="10" ry="17" fill="#b5834e" ${OL} transform="rotate(25 23 60)"/>
+    <ellipse cx="77" cy="60" rx="10" ry="17" fill="#b5834e" ${OL} transform="rotate(-25 77 60)"/>
+    <path d="M42 84 v8 M58 84 v8" stroke="#f08a2c" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="50" cy="58" r="28" fill="#f5e4c3" ${OL}/>
+    <ellipse cx="50" cy="69" rx="16" ry="12" fill="#fffaf0"/>
+    ${eye(39,53)}${eye(61,53)}${blush(32,63)}${blush(68,63)}
+    <path d="M45 61 L55 61 L50 68Z" fill="#ff9d3b" ${OL} stroke-width="1.8"/></svg>`,
+  brotim:()=>`<svg viewBox="0 0 100 100">
+    <path d="M50 44 V28" stroke="#3f8f3a" stroke-width="3.5"/>
+    <path d="M50 30 Q34 14 22 26 Q34 36 50 30Z" fill="#7fd65f" ${OL}/>
+    <path d="M50 28 Q66 8 80 20 Q68 34 50 28Z" fill="#9be07a" ${OL}/>
+    <path d="M36 86 l-4 6 M64 86 l4 6 M50 88 v6" stroke="#8a6440" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="50" cy="66" rx="28" ry="24" fill="#a8e68a" ${OL}/>
+    <path d="M30 60 Q50 50 70 60" stroke="#7cc95f" stroke-width="3" fill="none"/>
+    ${eye(40,66)}${eye(60,66)}${blush(32,75)}${blush(68,75)}${mouth(50,76,4)}</svg>`,
+  gotin:()=>`<svg viewBox="0 0 100 100"><defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a6dcff"/><stop offset="1" stop-color="#2f7fe0"/></linearGradient></defs>
+    <path d="M50 10 C64 32 80 48 78 66 A28 26 0 0 1 22 66 C20 48 36 32 50 10Z" fill="url(#gg)" ${OL}/>
+    <ellipse cx="38" cy="44" rx="5" ry="9" fill="#fff" opacity=".75" transform="rotate(20 38 44)"/>
+    ${eye(40,64)}${eye(60,64)}${blush(31,73)}${blush(69,73)}${mouth(50,74,4)}</svg>`,
+  faiscol:()=>`<svg viewBox="0 0 100 100">
+    <path d="M70 70 L86 58 L78 52 L92 34 L72 46 L80 52 L64 62Z" fill="#ffe14a" ${OL}/>
+    <path d="M30 34 L24 8 L44 26Z" fill="#ffd23d" ${OL}/><path d="M26 16 L24 8 L31 13Z" fill="#3a3a50"/>
+    <path d="M70 34 L76 8 L56 26Z" fill="#ffd23d" ${OL}/><path d="M74 16 L76 8 L69 13Z" fill="#3a3a50"/>
+    <ellipse cx="50" cy="72" rx="22" ry="18" fill="#ffd84a" ${OL}/>
+    <ellipse cx="50" cy="76" rx="12" ry="10" fill="#fff4bf"/>
+    <circle cx="50" cy="44" r="22" fill="#ffd84a" ${OL}/>
+    ${eye(41,42,6)}${eye(59,42,6)}<circle cx="33" cy="52" r="4.5" fill="#ff6b5b"/><circle cx="67" cy="52" r="4.5" fill="#ff6b5b"/>
+    <path d="M46 52 Q50 56 54 52" stroke="#24304d" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`,
+  pedrisco:()=>`<svg viewBox="0 0 100 100">
+    <path d="M44 26 L50 6 L58 24Z" fill="#8ff0ff" ${OL}/><path d="M50 8 L52 24" stroke="#fff" stroke-width="2"/>
+    <path d="M18 62 L26 32 L50 22 L76 30 L86 60 L74 86 L28 88Z" fill="#9b8f86" ${OL}/>
+    <path d="M26 32 L40 46 L50 22 M76 30 L62 44 L86 60 M40 46 L62 44" stroke="#7a6f68" stroke-width="2" fill="none"/>
+    <path d="M30 88 v6 h8 M62 88 v6 h8" stroke="#24304d" stroke-width="2.4" fill="#7a6f68"/>
+    <path d="M32 52 L46 56 M68 52 L54 56" stroke="#24304d" stroke-width="3" stroke-linecap="round"/>
+    ${eye(40,62,5.5)}${eye(60,62,5.5)}<path d="M44 76 h12" stroke="#24304d" stroke-width="2.4" stroke-linecap="round"/></svg>`,
+  lumicris:()=>`<svg viewBox="0 0 100 100"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f2e6ff"/><stop offset=".5" stop-color="#b48cff"/><stop offset="1" stop-color="#5a3fc0"/></linearGradient></defs>
+    <ellipse cx="50" cy="93" rx="18" ry="3.5" fill="#0003"/>
+    <path d="M50 8 L80 40 L50 84 L20 40Z" fill="url(#lg)" ${OL}/>
+    <path d="M20 40 H80 M50 8 L40 40 L50 84 L60 40Z" stroke="#ffffffaa" stroke-width="1.5" fill="none"/>
+    ${eye(41,50,5.5,'#3a1f7a')}${eye(59,50,5.5,'#3a1f7a')}
+    <path d="M14 20 l3 6 6 3 -6 3 -3 6 -3 -6 -6 -3 6 -3Z M86 62 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2Z" fill="#fff6a8"/></svg>`,
+};
+function art(sp){const s=SPECIES[sp];return s.img?`<img src="${s.img}" alt="${s.name}" draggable="false">`:SVGS[sp]()}
+function gem(sp,flip=false){const s=SPECIES[sp];return `<div class="gem${flip&&s.img?' flip':''}" style="--tc:${TYPES[s.type]}"><div class="gem-in">${art(sp)}</div></div>`}
+const pill=t=>`<span class="pill" style="--tc:${TYPES[t]}">${t}</span>`;
+
+/* ===================== CRIATURAS ===================== */
+function stats(m){const b=SPECIES[m.sp].base,L=m.lvl;const f=v=>Math.floor(2*v*L/100)+5;
+  return{hp:Math.floor(2*b.hp*L/100)+L+10,atk:f(b.atk),def:f(b.def),spd:f(b.spd)}}
+const expFor=l=>l*l*l;
+function makeMon(sp,lvl){const moves=[];for(const[l,id] of SPECIES[sp].learn) if(l<=lvl&&!moves.includes(id)) moves.push(id);
+  const m={sp,lvl,exp:expFor(lvl),moves:moves.slice(-4),hp:0};m.hp=stats(m).hp;return m}
+const nameOf=m=>SPECIES[m.sp].name;
+function healAll(){for(const m of G.party) m.hp=stats(m).hp}
+
+/* ===================== SOM ===================== */
+let AC=null,soundOn=true;
+function tone(f,d=.08,type='square',vol=.045,delay=0){if(!soundOn)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();
+  const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+d+.03)}catch(e){}}
+const seq=(fs,step,d,type,vol)=>fs.forEach((f,i)=>tone(f,d,type,vol,i*step));
+const SFX={blip:()=>tone(988,.04,'square',.03),hit:()=>{tone(150,.12,'sawtooth',.07);tone(80,.16,'square',.05,.05)},
+  heal:()=>seq([523,659,784,1047],.12,.16,'triangle',.06),level:()=>seq([659,784,988,1319],.1,.14,'square',.04),
+  enc:()=>seq([392,370,349,330,392,440,494,523],.06,.08,'square',.04),catch:()=>seq([784,988,1175,1568],.09,.12,'triangle',.06),
+  door:()=>seq([330,262],.07,.08,'square',.04),bump:()=>tone(90,.06,'square',.03),shake:()=>tone(220,.06,'triangle',.06),
+  item:()=>seq([880,1175,1480],.08,.1,'triangle',.05),faint:()=>seq([440,370,311,247],.09,.12,'sawtooth',.04)};
+
+/* ===================== ESTADO ===================== */
+const SAVE_KEY='cristalon-save-v1';
+let G=null;          // estado salvo do jogo
+let mode='title';    // title | world | battle
+let busy=false;      // evento em andamento
+function newGame(name){return{v:1,name,x:6,y:28,dir:'down',party:[],box:[],bag:{cristal:0,pocao:0},money:300,flags:{},seen:[],caught:[],rival:null}}
+function saveGame(){G.x=P.x;G.y=P.y;G.dir=P.dir;try{localStorage.setItem(SAVE_KEY,JSON.stringify(G));return true}catch(e){return false}}
+function loadGame(){try{const s=localStorage.getItem(SAVE_KEY);return s?JSON.parse(s):null}catch(e){return null}}
+const seen=sp=>{if(!G.seen.includes(sp))G.seen.push(sp)};
+const caught=sp=>{seen(sp);if(!G.caught.includes(sp))G.caught.push(sp)};
+
+/* ===================== ENTRADA ===================== */
+const held={up:0,down:0,left:0,right:0};const dirStack=[];
+const handlers=[];
+const pushH=h=>handlers.push(h);
+const popH=h=>{const i=handlers.lastIndexOf(h);if(i>=0)handlers.splice(i,1)};
+function press(b){const h=handlers[handlers.length-1];if(h)h(b)}
+function setHeld(b,v){if(!(b in held))return;held[b]=v;const i=dirStack.indexOf(b);if(i>=0)dirStack.splice(i,1);if(v)dirStack.push(b)}
+const curDir=()=>dirStack[dirStack.length-1]||null;
+const KEYS={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',
+  KeyZ:'a',Space:'a',KeyX:'b',Escape:'b',Backspace:'b',Enter:'start',NumpadEnter:'start'};
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;const b=KEYS[e.code];if(!b)return;e.preventDefault();
+  if(b in held){if(!held[b])setHeld(b,1);press(b)}else if(!e.repeat)press(b)});
+addEventListener('keyup',e=>{const b=KEYS[e.code];if(b in held)setHeld(b,0)});
+addEventListener('blur',()=>{for(const k in held)setHeld(k,0)});
+document.querySelectorAll('#pad [data-b]').forEach(btn=>{const b=btn.dataset.b;
+  btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.setPointerCapture?.(e.pointerId);btn.classList.add('on');if(b in held)setHeld(b,1);press(b)});
+  const up=()=>{btn.classList.remove('on');if(b in held)setHeld(b,0)};
+  btn.addEventListener('pointerup',up);btn.addEventListener('pointercancel',up);btn.addEventListener('lostpointercapture',up);
+  btn.addEventListener('contextmenu',e=>e.preventDefault())});
+if(matchMedia('(pointer:coarse)').matches||'ontouchstart' in window)document.body.classList.add('touch');
+
+/* ===================== TEXTO E ESCOLHAS ===================== */
+const tb=$('#textbox'),txt=$('#text'),arrow=tb.querySelector('.arrow'),chEl=$('#choices');
+function setText(t,narrow=false){tb.classList.remove('hidden');tb.classList.toggle('narrow',narrow);txt.textContent=t;arrow.classList.add('hidden')}
+function hideText(){tb.classList.add('hidden');tb.classList.remove('narrow')}
+function say(t,opts={}){const pages=(Array.isArray(t)?t:[t]).flatMap(x=>String(x).split('|'));
+  return pages.reduce((p,pg)=>p.then(()=>sayPage(pg,opts)),Promise.resolve())}
+function sayPage(t,{auto=0}={}){t=t.replaceAll('{P}',G?G.name:'');
+  return new Promise(res=>{setText('');let i=0,done=false,timer=0;
+    const close=()=>{clearTimeout(timer);popH(h);res()};
+    const finish=()=>{done=true;txt.textContent=t;arrow.classList.remove('hidden');if(auto)timer=setTimeout(close,auto)};
+    const h=b=>{if(b!=='a'&&b!=='b'&&b!=='start')return;if(!done){i=t.length;finish()}else{SFX.blip();close()}};
+    h.isSay=true;pushH(h);
+    const step=()=>{if(done)return;i+=2;txt.textContent=t.slice(0,i);if(i>=t.length)finish();else setTimeout(step,16)};step()})}
+tb.addEventListener('pointerdown',()=>{const h=handlers[handlers.length-1];if(h&&h.isSay)press('a')});
+
+function choose(items,{cols=1,cancel=true,cls='',start=0,title=''}={}){
+  return new Promise(res=>{const n=items.length;let sel=clamp(start,0,n-1);
+    chEl.className=cls;chEl.innerHTML=(title?`<div class="ch-title">${title}</div>`:'')+
+      `<div class="ch-grid" style="grid-template-columns:repeat(${cols},1fr)">`+items.map((it,i)=>`<button class="ch" data-i="${i}">${it}</button>`).join('')+'</div>';
+    const btns=[...chEl.querySelectorAll('.ch')];
+    const render=()=>{btns.forEach((b,i)=>b.classList.toggle('sel',i===sel));btns[sel]?.scrollIntoView({block:'nearest'})};
+    const end=v=>{popH(h);chEl.className='hidden';chEl.innerHTML='';res(v)};
+    const h=b=>{const old=sel;
+      if(b==='up'){if(cols===1)sel=(sel-1+n)%n;else if(sel-cols>=0)sel-=cols}
+      else if(b==='down'){if(cols===1)sel=(sel+1)%n;else if(sel+cols<n)sel+=cols}
+      else if(b==='left'){if(cols>1&&sel%cols>0)sel--}
+      else if(b==='right'){if(cols>1&&sel%cols<cols-1&&sel+1<n)sel++}
+      else if(b==='a'){SFX.blip();return end(sel)}
+      else if(b==='b'&&cancel){SFX.blip();return end(-1)}
+      if(old!==sel){SFX.blip();render()}};
+    btns.forEach(btn=>btn.addEventListener('click',()=>{if(handlers[handlers.length-1]!==h)return;sel=+btn.dataset.i;SFX.blip();end(sel)}));
+    pushH(h);render()})}
+// painel que fecha com A/B/toque
+function showPanel(html){return new Promise(res=>{const pn=$('#panel');pn.innerHTML=html;
+  const end=()=>{popH(h);pn.innerHTML='';res()};const h=b=>{if(b==='a'||b==='b'||b==='start'){SFX.blip();end()}};
+  pn.firstElementChild?.addEventListener('click',()=>{if(handlers[handlers.length-1]===h)end()});pushH(h)})}
+const fadeEl=$('#fade');
+async function fade(to,ms=250,color='#000'){fadeEl.style.background=color;fadeEl.style.transition=`opacity ${ms}ms`;
+  void fadeEl.offsetWidth;fadeEl.style.opacity=to;await sleep(ms+30)}
+
+/* ===================== MUNDO: MAPA ===================== */
+const TS=16,VW=15,VH=10,MW=32,MH=48;
+const MAP=Array.from({length:MH},()=>Array(MW).fill('.'));
+const R=(x,y,w,h,c)=>{for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)if(j>=0&&j<MH&&i>=0&&i<MW)MAP[j][i]=c};
+function hash(x,y,s=0){let h=(x*374761393+y*668265263+s*982451653)|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296}
+(function buildMap(){
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(hash(x,y,7)<.05)MAP[y][x]='f';
+  R(0,0,2,MH,'T');R(MW-2,0,2,MH,'T');R(0,0,MW,1,'T');R(0,MH-2,MW,2,'T');
+  // Rota 1 (norte)
+  R(15,0,2,30,'=');
+  R(3,3,9,5,',');R(19,6,9,6,',');R(4,13,9,5,',');R(20,15,8,4,',');
+  R(22,2,6,3,'~');
+  R(12,9,2,2,'T');R(8,9,2,2,'T');R(24,12,2,2,'T');R(6,19,2,2,'T');R(26,20,2,1,'T');R(2,8,1,3,'T');R(28,8,2,3,'T');
+  R(0,22,MW,1,'T');R(15,22,2,1,'=');
+  // Vila Aurora (sul)
+  R(3,29,26,1,'=');R(6,28,1,1,'=');R(25,28,1,1,'=');
+  R(10,30,1,7,'=');R(3,37,18,1,'=');R(16,36,1,1,'=');
+  R(23,32,6,5,'~');
+  R(12,40,7,4,'f');R(24,41,2,2,'T');R(4,42,2,2,'T');R(28,39,2,2,'T');R(2,23,2,2,'T');R(28,23,2,1,'T');
+})();
+const BUILDINGS=[
+  {id:'casa',name:'Sua casa',x:4,y:24,w:5,h:4,door:[6,27],roof:'#d4574a'},
+  {id:'casaK',name:'Casa de Kael',x:23,y:24,w:5,h:4,door:[25,27],roof:'#4a73d4'},
+  {id:'lab',name:'Laboratório da Profa. Lírio',x:12,y:31,w:9,h:5,door:[16,35],roof:'#7d8fa8',wall:'#eef2f7',label:'LAB'},
+  {id:'centro',name:'Centro de Cura',x:3,y:33,w:5,h:4,door:[5,36],roof:'#e2679c',gem:true},
+];
+const BMAP=Array.from({length:MH},()=>Array(MW).fill(null));
+for(const b of BUILDINGS)for(let j=b.y;j<b.y+b.h;j++)for(let i=b.x;i<b.x+b.w;i++)BMAP[j][i]=b;
+
+const PAL={
+  player:{o:'#1b1f2e',h:'#3b2c5e',s:'#ffd8b5',e:'#1b1f2e',c:'#22b3a3',p:'#36446a',k:'#e2533f'},
+  guard:{o:'#1b1f2e',h:'#2a2a33',s:'#f2c9a5',e:'#1b1f2e',c:'#3a4a7a',p:'#26304d',k:'#1b1f2e'},
+  tito:{o:'#1b1f2e',h:'#5a3a22',s:'#f5cfa8',e:'#1b1f2e',c:'#6b8f3a',p:'#7a5a3a',k:'#4a3020'},
+  nina:{o:'#1b1f2e',h:'#d0457a',s:'#ffdcc0',e:'#1b1f2e',c:'#f39ac0',p:'#ffffff',k:'#d0457a'},
+  kid:{o:'#1b1f2e',h:'#4a2f1d',s:'#f0c49c',e:'#1b1f2e',c:'#f0c040',p:'#3a5aa0',k:'#e2533f'},
+  elder:{o:'#1b1f2e',h:'#d8d8d8',s:'#f0c9a5',e:'#1b1f2e',c:'#8a6d4a',p:'#5a4a3a',k:'#3a2a1a'},
+};
+const NPCS=[
+  {id:'guarda',x:15,y:1,dir:'down',pal:'guard',talk:()=>say('Guarda: Alto lá! A estrada para a Cidade Quartzo está em obras.|Volte quando a próxima versão de Cristalon ficar pronta!')},
+  {id:'tito',x:13,y:11,dir:'left',pal:'tito',talk:()=>titoTalk()},
+  {id:'nina',x:18,y:19,dir:'down',pal:'nina',talk:()=>say('Nina: Sabia que todo cristalon tem um elemento?|Água apaga Fogo, Fogo queima Planta e Planta absorve Água.|Elétrico é ótimo contra Água, mas quase não faz nada contra Pedra!|E o raro elemento Cristal quebra Pedra com facilidade.')},
+  {id:'menino',x:12,y:27,dir:'down',pal:'kid',talk:()=>say('Menino: Eu vi uma pedra com olhos na Rota 1!|Ela estava escondida no mato alto. Juro!')},
+  {id:'idoso',x:20,y:41,dir:'left',pal:'elder',talk:()=>say('Sr. Bento: Há muito tempo, um Grande Cristal caiu do céu e se partiu em mil pedaços.|Cada pedaço deu vida a um cristalon. Por isso todos carregam cristais no corpo.|Se você vir um cristalon roxo e brilhante na Rota 1... não deixe escapar!')},
+];
+const OBJS=[
+  {kind:'sign',x:14,y:24,t:'VILA AURORA|"Onde a luz dos cristais desperta."'},
+  {kind:'sign',x:17,y:23,t:'ROTA 1|↑ Cidade Quartzo'},
+  {kind:'sign',x:16,y:1,t:'CIDADE QUARTZO — EM CONSTRUÇÃO|Aguarde a próxima versão!'},
+  {kind:'sign',x:11,y:36,t:'LABORATÓRIO DE CRISTALOGIA|Profa. Lírio'},
+  {kind:'sign',x:8,y:36,t:'CENTRO DE CURA|Sua equipe cansada? Entre e descanse!'},
+  {kind:'item',x:27,y:13,item:'pocao',qty:1,flag:'item1'},
+  {kind:'item',x:3,y:10,item:'cristal',qty:2,flag:'item2'},
+];
+const tile=(x,y)=>(x<0||y<0||x>=MW||y>=MH)?'T':MAP[y][x];
+const npcAt=(x,y)=>NPCS.find(n=>n.x===x&&n.y===y);
+const objAt=(x,y)=>OBJS.find(o=>o.x===x&&o.y===y&&!(o.kind==='item'&&G.flags[o.flag]));
+function blocked(x,y){const t=tile(x,y);return t==='T'||t==='~'||!!BMAP[y]?.[x]||!!npcAt(x,y)||!!objAt(x,y)}
+
+/* ===================== MUNDO: DESENHO ===================== */
+const cv=$('#world'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
+function mk(w,h,fn){const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');fn(g);return c}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;
+  const m=v=>clamp(Math.round(f<0?v*(1+f):v+(255-v)*f),0,255);return'#'+((1<<24)|(m(r)<<16)|(m(g)<<8)|m(b)).toString(16).slice(1)}
+const px=(g,c,x,y,w=1,h=1)=>{g.fillStyle=c;g.fillRect(x,y,w,h)};
+function grassBase(g,v){px(g,'#88d46c',0,0,16,16);for(let k=0;k<4;k++){const x=Math.floor(hash(v,k,1)*13),y=Math.floor(hash(v,k,2)*13);px(g,'#71c058',x,y+1);px(g,'#71c058',x+2,y+1);px(g,'#71c058',x+1,y)}
+  if(hash(v,9)<.5)px(g,'#a4e486',Math.floor(hash(v,3)*14),Math.floor(hash(v,4)*14),2,1)}
+const TILES={};
+for(let v=0;v<6;v++){
+  TILES['.'+v]=mk(16,16,g=>grassBase(g,v));
+  TILES['f'+v]=mk(16,16,g=>{grassBase(g,v);const cols=['#ff7a8a','#ffffff','#ffd84a','#c9a2ff'];
+    for(let k=0;k<2;k++){const x=2+Math.floor(hash(v,k,5)*10),y=2+Math.floor(hash(v,k,6)*10),c=cols[(v+k)%4];
+      px(g,c,x,y-1);px(g,c,x-1,y);px(g,c,x+1,y);px(g,c,x,y+1);px(g,'#ffb13b',x,y)}});
+  TILES['='+v]=mk(16,16,g=>{px(g,'#e9d49c',0,0,16,16);for(let k=0;k<3;k++)px(g,'#d4b97c',Math.floor(hash(v,k,8)*15),Math.floor(hash(v,k,9)*15),2,1);px(g,'#f6e6b8',Math.floor(hash(v,5)*14),Math.floor(hash(v,6)*14))});
+}
+TILES[',']=mk(16,16,g=>{px(g,'#5cb24a',0,0,16,16);
+  for(const[ox,oy] of [[0,1],[8,1],[4,8],[12,8]]){px(g,'#2f7d34',ox+1,oy+3,6,4);px(g,'#3f9a3c',ox+1,oy+2,6,3);
+    for(let i=0;i<3;i++){px(g,'#2f7d34',ox+i*2+1,oy,1,3);px(g,'#7fd468',ox+i*2+2,oy+1,1,2)}px(g,'#9be07a',ox+2,oy+3,3,1)}});
+TILES['T']=mk(16,16,g=>{px(g,'#5aa84a',0,0,16,16);px(g,'#6b4423',6,11,4,5);px(g,'#4a2f18',6,15,4,1);
+  px(g,'#1f5a32',1,1,14,11);px(g,'#1f5a32',3,0,10,13);px(g,'#3c9a4a',2,2,12,9);px(g,'#3c9a4a',4,1,8,11);
+  px(g,'#5fc062',4,2,5,3);px(g,'#5fc062',3,4,3,2);px(g,'#2c7a3c',9,7,4,3);px(g,'#2c7a3c',4,9,6,2);px(g,'#8fe08a',5,3,2,1)});
+function drawWater(sx,sy,x,y,t){ctx.fillStyle='#4ea6e6';ctx.fillRect(sx,sy,16,16);
+  const ph=Math.floor(t/350+x+y*2)%4;ctx.fillStyle='#3a8fd6';ctx.fillRect(sx+((ph*3)%12),sy+4,5,1);ctx.fillRect(sx+((ph*5+6)%12),sy+11,5,1);
+  ctx.fillStyle='#c4ecff';ctx.fillRect(sx+((ph*4+2)%13),sy+7,3,1);
+  const up=tile(x,y-1),lf=tile(x-1,y),rt=tile(x+1,y);
+  ctx.fillStyle='#e9f6ff';if(up!=='~')ctx.fillRect(sx,sy,16,2);if(lf!=='~')ctx.fillRect(sx,sy,2,16);if(rt!=='~')ctx.fillRect(sx+14,sy,2,16)}
+function drawBuilding(b,sx,sy){const w=b.w*16,h=b.h*16,wallTop=sy+(b.h-2)*16+2,roof=b.roof,dk=shade(roof,-.35),lt=shade(roof,.35);
+  px(ctx,'#0003',sx+3,sy+h-2,w-2,3);
+  px(ctx,'#5a4636',sx,wallTop,w,sy+h-wallTop);px(ctx,b.wall||'#f4e8cf',sx+1,wallTop,w-2,sy+h-wallTop-1);px(ctx,'#d9c8a4',sx+1,sy+h-4,w-2,3);
+  px(ctx,dk,sx-1,sy+2,w+2,wallTop-sy);px(ctx,roof,sx,sy+3,w,wallTop-sy-3);
+  for(let yy=sy+9;yy<wallTop-2;yy+=6)px(ctx,shade(roof,-.15),sx,yy,w,1);
+  px(ctx,lt,sx,sy+3,w,3);px(ctx,dk,sx-2,wallTop-2,w+4,3);
+  const dx=sx+(b.door[0]-b.x)*16,dy=sy+(b.door[1]-b.y)*16;
+  for(let i=0;i<b.w;i++){if(b.x+i===b.door[0])continue;const wx=sx+i*16+3;if((i+b.x)%2&&b.w>5)continue;
+    px(ctx,'#5a4636',wx,wallTop+4,10,9);px(ctx,'#9fdcf2',wx+1,wallTop+5,8,7);px(ctx,'#d8f3ff',wx+1,wallTop+5,3,2);px(ctx,'#5a4636',wx+5,wallTop+5,1,7)}
+  px(ctx,'#3d2817',dx+2,dy+2,12,14);px(ctx,'#8a5a36',dx+3,dy+3,10,13);px(ctx,'#a8714a',dx+4,dy+4,3,11);px(ctx,'#ffd25a',dx+11,dy+10,1,2);
+  px(ctx,'#cbb48a',dx+1,sy+h-1,14,1);
+  if(b.label){ctx.fillStyle='#fff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.fillText(b.label,sx+w/2,sy+14)}
+  if(b.gem){const cx=sx+w/2,cy=sy+12;ctx.fillStyle='#fff';ctx.fillRect(cx-6,cy-6,12,12);ctx.fillStyle='#3fc7e8';
+    ctx.beginPath();ctx.moveTo(cx,cy-5);ctx.lineTo(cx+5,cy);ctx.lineTo(cx,cy+5);ctx.lineTo(cx-5,cy);ctx.fill()}}
+
+/* sprites de personagens (12x16, desenhados por caracteres) */
+const HEAD_D=['...oooooo...','..ohhhhhho..','.ohhhhhhhho.','.ohhhhhhhho.','.ohsshhssho.','.osesssseso.','.osssssssso.','..osssssso..'];
+const HEAD_U=['...oooooo...','..ohhhhhho..','.ohhhhhhhho.','.ohhhhhhhho.','.ohhhhhhhho.','.ohhhhhhhho.','.ohhhhhhhho.','..ohhhhhho..'];
+const HEAD_S=['...oooooo...','..ohhhhhho..','.ohhhhhhhho.','.ohhhhhhhho.','.osshhhhhho.','.oesshhhhho.','.osssssssho.','..osssssso..'];
+const BODY_F=['.occcccccco.','osccccccccso','osccccccccso','.occcccccco.','.oppppppppo.'];
+const BODY_S=['..occcccco..','..occsscco..','..occsscco..','..occcccco..','..oppppppo..'];
+const LEGS_F=[['.opppoopppo.','.okko..okko.','..oo....oo..'],['.opppoopppo.','.okko..oppo.','..oo...okko.'],['.opppoopppo.','.oppo..okko.','.okko...oo..']];
+const LEGS_S=[['..opppppo...','..okkookko..','...oo..oo...'],['..opppppo...','.okko.oppo..','..oo..okko..'],['..opppppo...','..oppo.okko.','..okko..oo..']];
+const SPR={};
+function sprite(palKey){if(SPR[palKey])return SPR[palKey];const pal=PAL[palKey];const out={};
+  const draw=(rows,flip)=>mk(12,16,g=>rows.forEach((r,y)=>[...r].forEach((ch,x)=>{if(ch==='.')return;g.fillStyle=pal[ch];g.fillRect(flip?11-x:x,y,1,1)})));
+  out.down=LEGS_F.map(l=>draw([...HEAD_D,...BODY_F,...l]));out.up=LEGS_F.map(l=>draw([...HEAD_U,...BODY_F,...l]));
+  out.left=LEGS_S.map(l=>draw([...HEAD_S,...BODY_S,...l]));out.right=LEGS_S.map(l=>draw([...HEAD_S,...BODY_S,...l],true));
+  return SPR[palKey]=out}
+
+/* ===================== MUNDO: JOGADOR E LOOP ===================== */
+const P={x:6,y:28,dir:'down',moving:false,t:0,tx:0,ty:0,step:0};
+const MOVE_MS=150;
+const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+const OPP={up:'down',down:'up',left:'right',right:'left'};
+const front=()=>[P.x+DIRS[P.dir][0],P.y+DIRS[P.dir][1]];
+let camX=0,camY=0;
+function render(t){const fx=P.moving?(P.x+(P.tx-P.x)*P.t):P.x,fy=P.moving?(P.y+(P.ty-P.y)*P.t):P.y;
+  camX=clamp(Math.round(fx*TS-7*TS),0,MW*TS-VW*TS);camY=clamp(Math.round(fy*TS-4*TS-8),0,MH*TS-VH*TS);
+  const x0=Math.floor(camX/TS),y0=Math.floor(camY/TS);
+  for(let y=y0;y<=y0+VH;y++)for(let x=x0;x<=x0+VW;x++){const sx=x*TS-camX,sy=y*TS-camY,c=tile(x,y);
+    if(c==='~')drawWater(sx,sy,x,y,t);else if(c===','||c==='T')ctx.drawImage(TILES[c],sx,sy);
+    else ctx.drawImage(TILES[c+Math.floor(hash(x,y)*6)]||TILES['.0'],sx,sy)}
+  for(const b of BUILDINGS){const sx=b.x*TS-camX,sy=b.y*TS-camY;if(sx>-b.w*TS&&sx<VW*TS+TS&&sy>-b.h*TS&&sy<VH*TS+TS)drawBuilding(b,sx,sy)}
+  const ents=[];
+  for(const o of OBJS){if(o.kind==='item'&&G.flags[o.flag])continue;ents.push({y:o.y,d:()=>drawObj(o,o.x*TS-camX,o.y*TS-camY,t)})}
+  for(const n of NPCS)ents.push({y:n.y,d:()=>drawChar(n.pal,n.dir,0,n.x*TS-camX,n.y*TS-camY,tile(n.x,n.y)===',')});
+  const fr=P.moving?(P.t<.5?1+P.step:0):0;
+  ents.push({y:fy,d:()=>drawChar('player',P.dir,fr,Math.round(fx*TS-camX),Math.round(fy*TS-camY),!P.moving&&tile(P.x,P.y)===',')});
+  ents.sort((a,b)=>a.y-b.y).forEach(e=>e.d())}
+function drawChar(pal,dir,fr,sx,sy,inGrass){const s=sprite(pal)[dir][fr];
+  px(ctx,'#0003',sx+3,sy+13,10,3);ctx.drawImage(s,sx+2,sy-3-(fr?1:0));
+  if(inGrass)ctx.drawImage(TILES[','],0,8,16,8,sx,sy+8,16,8)}
+function drawObj(o,sx,sy,t){if(o.kind==='sign'){px(ctx,'#4a2f18',sx+7,sy+9,2,7);px(ctx,'#3d2614',sx+1,sy+2,14,9);px(ctx,'#c08a52',sx+2,sy+3,12,7);
+    px(ctx,'#8a5a30',sx+4,sy+5,8,1);px(ctx,'#8a5a30',sx+4,sy+7,6,1)}
+  else{const b=Math.round(Math.sin(t/300)*1.5);px(ctx,'#0003',sx+4,sy+13,8,2);ctx.fillStyle='#2a6f9a';ctx.beginPath();
+    ctx.moveTo(sx+8,sy+1+b);ctx.lineTo(sx+14,sy+7+b);ctx.lineTo(sx+8,sy+14+b);ctx.lineTo(sx+2,sy+7+b);ctx.fill();
+    ctx.fillStyle='#8feaff';ctx.beginPath();ctx.moveTo(sx+8,sy+3+b);ctx.lineTo(sx+12,sy+7+b);ctx.lineTo(sx+8,sy+12+b);ctx.lineTo(sx+4,sy+7+b);ctx.fill();
+    px(ctx,'#fff',sx+6,sy+5+b,2,2);if(Math.floor(t/400)%3===0)px(ctx,'#fff',sx+12,sy+2+b)}}
+function worldActive(){return mode==='world'&&!busy&&handlers.length===1}
+function tryMove(d){P.dir=d;const[nx,ny]=[P.x+DIRS[d][0],P.y+DIRS[d][1]];
+  const b=BMAP[ny]?.[nx];if(b&&b.door[0]===nx&&b.door[1]===ny&&d==='up')return runEvent(()=>enterBuilding(b));
+  if(ny===22&&P.y===23&&!G.flags.starter)return runEvent(gateStop);
+  if(blocked(nx,ny))return;
+  P.moving=true;P.t=0;P.tx=nx;P.ty=ny;P.step^=1}
+function onArrive(){if(tile(P.x,P.y)===','&&Math.random()<.11)runEvent(wildEncounter)}
+let last=performance.now(),bumpT=0;
+function loop(now){const dt=Math.min(50,now-last);last=now;
+  if(mode==='world'){
+    if(P.moving){P.t+=dt/MOVE_MS;if(P.t>=1){P.moving=false;P.x=P.tx;P.y=P.ty;P.t=0;onArrive()}}
+    if(!P.moving&&worldActive()){const d=curDir();if(d)tryMove(d)}
+    render(now)}
+  requestAnimationFrame(loop)}
+async function runEvent(fn){if(busy)return;busy=true;try{await fn()}catch(e){console.error(e)}finally{hideText();busy=false}}
+const worldH=b=>{if(mode!=='world'||busy||P.moving)return;if(b==='a')interact();else if(b==='start')runEvent(startMenu)};
+
+function interact(){const[fx,fy]=front();const n=npcAt(fx,fy);
+  if(n){if(n.id!=='guarda')n.dir=OPP[P.dir];return runEvent(n.talk)}
+  const o=objAt(fx,fy);if(o)return runEvent(()=>o.kind==='sign'?say(o.t):pickItem(o));
+  const b=BMAP[fy]?.[fx];if(b&&b.door[0]===fx&&b.door[1]===fy)return runEvent(()=>enterBuilding(b));
+  if(tile(fx,fy)==='~')return runEvent(()=>say('A água é tão cristalina que dá para ver o fundo.'))}
+async function pickItem(o){G.flags[o.flag]=1;G.bag[o.item]+=o.qty;SFX.item();
+  await say(`{P} encontrou ${o.qty>1?o.qty+'× ':''}${ITEMS[o.item].n}!|{P} guardou na mochila.`)}
+async function gateStop(){await say('???: Ei! Espere aí!');P.dir='up';
+  await say('Profa. Lírio: É perigoso entrar no mato alto sem um cristalon!|Cristalons selvagens podem aparecer a qualquer momento.|Venha ao meu laboratório, ao sul da vila. Tenho algo para você!');P.dir='down'}
+
+/* ===================== PRÉDIOS ===================== */
+const DECO={casa:'🏠',casaK:'🏡',lab:'🔬',centro:'💎'};
+async function enterBuilding(b){SFX.door();await fade(1,200);
+  $('#overlay').innerHTML=`<div class="interior ${b.id}"><div class="room">${esc(b.name)}</div><div class="deco">${b.id==='centro'?gemIcon():''}</div></div>`;
+  await fade(0,200);saveGame();
+  await INTERIOR[b.id]();
+  hideText();await fade(1,200);$('#overlay').innerHTML='';P.dir='down';await fade(0,200)}
+const gemIcon=()=>`<svg viewBox="0 0 100 100"><path d="M50 6 L84 40 L50 94 L16 40Z" fill="#9fe9ff" stroke="#3a6fb0" stroke-width="3"/><path d="M16 40 H84 M50 6 L38 40 L50 94 L62 40Z" stroke="#ffffffcc" stroke-width="2" fill="none"/></svg>`;
+async function healJingle(){SFX.heal();await fade(.6,300,'#fff');healAll();await fade(0,300,'#fff')}
+const INTERIOR={
+  async casa(){if(!G.flags.starter)return say('Mãe: Bom dia, {P}! A Profa. Lírio passou aqui procurando por você.|O laboratório dela fica ao sul da vila. Vá logo, ela parecia animada!');
+    await say('Mãe: {P}! Você parece cansado... descanse um pouco.');await healJingle();await say('Mãe: Pronto! Agora sim. Cuide bem dos seus cristalons!')},
+  async casaK(){if(!G.flags.starter)return say('Lia: Oi, {P}! O Kael saiu correndo para o laboratório faz tempo.|Ele não parava de falar dos cristalons iniciais...');
+    return say('Lia: Meu irmão já partiu para a Rota 1.|Ele quer ser o maior domador de cristais do mundo. Que exagero!')},
+  async lab(){if(!G.flags.starter)return starterEvent();
+    await say(`Profa. Lírio: Olá, {P}! Sua Cristaldex já tem ${G.caught.length} registros de captura.|Deixe-me cuidar da sua equipe.`);
+    await healJingle();await say('Profa. Lírio: Pronto! Continue explorando a Rota 1!')},
+  async centro(){await say('Enfermeira Selene: Bem-vindo ao Centro de Cura Cristalino!');
+    for(;;){setText('Enfermeira Selene: Como posso ajudar?');const c=await choose(['Curar equipe','Comprar itens','Sair']);
+      if(c===0){if(!G.party.length){await say('Enfermeira Selene: Você ainda não tem cristalons!');continue}
+        await say('Enfermeira Selene: Vou cuidar deles. Só um instante...');await healJingle();await say('Enfermeira Selene: Prontinho! Sua equipe está em plena forma.')}
+      else if(c===1)await shop();
+      else{await say('Enfermeira Selene: Volte sempre!');return}}}
+};
+async function shop(){for(;;){setText(`Dinheiro: $${G.money}. O que vai levar?`);
+  const keys=['cristal','pocao'];const c=await choose([...keys.map(k=>`${ITEMS[k].n} — $${ITEMS[k].price}`),'Voltar']);
+  if(c<0||c===2)return;const it=ITEMS[keys[c]];
+  if(G.money<it.price){await say('Você não tem dinheiro suficiente.');continue}
+  G.money-=it.price;G.bag[keys[c]]++;SFX.item();await say(`Você comprou ${it.n}! Restam $${G.money}.`)}}
+
+async function starterEvent(){
+  await say(['Profa. Lírio: Ah, {P}! Chegou na hora certa!','Kael: Finalmente! A professora não me deixou escolher antes de você chegar.',
+    'Profa. Lírio: Calma, Kael. {P}, estes são três cristalons muito especiais.','Cada um carrega um núcleo de cristal elemental: Água, Fogo e Planta.',
+    'Escolha com cuidado. Ele será o seu parceiro em toda a jornada!']);
+  const sp=await starterSelect();
+  G.party=[makeMon(sp,5)];caught(sp);SFX.catch();
+  await say(`{P} recebeu ${SPECIES[sp].name}!`);
+  const rv=COUNTER[sp];G.rival=rv;seen(rv);
+  await say([`Kael: Então eu fico com ${SPECIES[rv].name}!`,`Kael: ${SPECIES[rv].type} é forte contra ${SPECIES[sp].type}, sabia? Vamos testar agora mesmo!`]);
+  G.flags.starter=1;
+  const r=await battle({trainer:{name:'Kael',team:[makeMon(rv,5)],money:150,lose:'Kael: O quê?! Mas eu tinha a vantagem de elemento!'},noWhiteout:true});
+  healAll();
+  if(r==='win')await say('Kael: Hmpf... foi sorte de principiante. Da próxima vez eu ganho!');
+  else await say('Kael: Hahaha! Eu disse que tinha escolhido melhor!|Profa. Lírio: Não desanime, {P}. Vou curar vocês dois.');
+  await say(['Profa. Lírio: Que batalha emocionante! Tomem, levem isto também.']);
+  G.bag.cristal+=5;G.bag.pocao+=2;SFX.item();
+  await say(['{P} recebeu 5 Cristais de Captura e 2 Poções!','Profa. Lírio: Enfraqueça um cristalon selvagem e arremesse um Cristal de Captura para capturá-lo.',
+    'Quanto mais fraco ele estiver, maior a chance de sucesso!','A Rota 1 fica ao norte da vila. Boa jornada, {P}!','Kael: Eu vou na frente! Até mais, {P}!']);
+  saveGame()}
+
+function starterSelect(){hideText();return new Promise(res=>{const keys=['axolume','lavascudo','folhix'];const pn=$('#panel');let sel=0,lock=false;
+  pn.innerHTML=`<div class="starter"><h2>Escolha seu parceiro</h2><div class="cards">${keys.map((k,i)=>{const s=SPECIES[k];
+    return`<button class="card" data-i="${i}" style="--tc:${TYPES[s.type]}"><img src="${s.art}" style="object-position:${s.pos}" alt=""><b>${s.name}</b>${pill(s.type)}</button>`}).join('')}</div><p class="sdesc"></p></div>`;
+  const cards=[...pn.querySelectorAll('.card')],desc=pn.querySelector('.sdesc');
+  const render=()=>{cards.forEach((c,i)=>c.classList.toggle('sel',i===sel));desc.textContent=SPECIES[keys[sel]].desc};
+  const confirm=async()=>{lock=true;const s=SPECIES[keys[sel]];setText(`Escolher ${s.name}, do elemento ${s.type}?`);
+    const c=await choose(['Sim','Não'],{cls:''});hideText();if(c===0){popH(h);pn.innerHTML='';res(keys[sel])}else lock=false};
+  const h=b=>{if(lock)return;if(b==='left'&&sel>0){sel--;SFX.blip();render()}else if(b==='right'&&sel<2){sel++;SFX.blip();render()}else if(b==='a'){SFX.blip();confirm()}};
+  cards.forEach((c,i)=>c.addEventListener('click',()=>{if(lock||handlers[handlers.length-1]!==h)return;sel=i;render();confirm()}));
+  pushH(h);render()})}
+
+async function titoTalk(){if(G.flags.tito)return say('Tito: Você é forte demais! Vou voltar a treinar no mato alto.');
+  await say('Tito: Ei! Nossos olhares se cruzaram. Isso significa batalha!');
+  const r=await battle({trainer:{name:'Caçador Tito',team:[makeMon('piuvento',3),makeMon('faiscol',4)],money:120,lose:'Tito: Não acredito! Meus cristalons...'}});
+  if(r==='win'){G.flags.tito=1;await say('Tito: Dica de caçador: os cristalons mais raros aparecem quando você menos espera.')}
+  else if(r==='lose')await whiteout()}
+function pickWild(){const tot=ROUTE1.reduce((a,b)=>a+b[1],0);let r=Math.random()*tot;for(const[sp,w] of ROUTE1){if((r-=w)<0)return sp}return ROUTE1[0][0]}
+async function wildEncounter(){const sp=pickWild();const m=makeMon(sp,sp==='lumicris'?5:rnd(2,5));
+  const r=await battle({wild:m});if(r==='lose')await whiteout()}
+async function whiteout(){await fade(1,400);G.money=Math.floor(G.money/2);healAll();P.x=5;P.y=37;P.dir='up';
+  $('#overlay').innerHTML=`<div class="interior centro"><div class="room">Centro de Cura</div><div class="deco">${gemIcon()}</div></div>`;await fade(0,300);
+  await say('{P} correu de volta ao Centro de Cura...|Enfermeira Selene: Seus cristalons estavam exaustos. Já cuidei de todos!|Tome cuidado lá fora, viu?');
+  hideText();await fade(1,200);$('#overlay').innerHTML='';P.dir='down';await fade(0,200);saveGame()}
+
+/* ===================== BATALHA ===================== */
+const bEl=$('#battle'),meEl=$('#meMon'),foeEl=$('#foeMon'),meInfo=$('#meInfo'),foeInfo=$('#foeInfo');
+let B=null;
+const freshStages=()=>({atk:0,def:0,spd:0});
+const stageMul=s=>s>=0?(2+s)/2:2/(2-s);
+const effOf=(mt,dt)=>(CHART[mt]||{})[dt]??1;
+const alive=()=>G.party.filter(m=>m.hp>0);
+const foeLabel=()=>B.wild?`${nameOf(B.foe)} selvagem`:`${nameOf(B.foe)} de ${B.tr.name}`;
+const label=side=>side==='me'?nameOf(B.me):foeLabel();
+const bsay=t=>say(t,{auto:1100});
+function hpColor(f){return f>.5?'#5ce07a':f>.2?'#f2c94c':'#ef5b5b'}
+function renderInfo(side,instant=false){const m=side==='me'?B.me:B.foe,el=side==='me'?meInfo:foeInfo,s=SPECIES[m.sp],mx=stats(m).hp,f=m.hp/mx;
+  el.querySelector('.n').textContent=s.name;el.querySelector('.lv').textContent='Nv '+m.lvl;el.querySelector('.tp').innerHTML=pill(s.type);
+  const bar=el.querySelector('.hpbar i');if(instant){bar.style.transition='none';void bar.offsetWidth}
+  bar.style.width=(f*100)+'%';bar.style.backgroundColor=hpColor(f);if(instant){void bar.offsetWidth;bar.style.transition=''}
+  if(side==='me'){el.querySelector('.hpt').textContent=`${m.hp} / ${mx}`;const xi=el.querySelector('.xpbar i');
+    const xf=m.lvl>=100?1:(m.exp-expFor(m.lvl))/(expFor(m.lvl+1)-expFor(m.lvl));if(instant){xi.style.transition='none';void xi.offsetWidth}
+    xi.style.width=clamp(xf,0,1)*100+'%';if(instant){void xi.offsetWidth;xi.style.transition=''}}
+  else el.querySelector('.cg').innerHTML=B.wild&&G.caught.includes(m.sp)?'<i class="caught" title="Já capturado"></i>':''}
+function setMon(side){const m=side==='me'?B.me:B.foe,el=side==='me'?meEl:foeEl;el.getAnimations().forEach(a=>a.cancel());
+  el.style.setProperty('--glow',TYPES[SPECIES[m.sp].type]);el.innerHTML=gem(m.sp,side==='foe');el.style.opacity=1;renderInfo(side,true)}
+const sendOut=el=>anim(el,[{transform:'scale(.1)',opacity:0,filter:'brightness(3)'},{transform:'scale(1)',opacity:1,filter:'brightness(1)'}],{duration:450,easing:'cubic-bezier(.2,1.4,.5,1)'});
+async function battle(opts){const wild=opts.wild,tr=opts.trainer;
+  B={wild:!!wild,tr,team:wild?[wild]:tr.team,idx:0,stg:{me:freshStages(),foe:freshStages()}};B.foe=B.team[0];B.me=alive()[0];
+  B.team.forEach(m=>seen(m.sp));mode='battle';SFX.enc();
+  for(let i=0;i<3;i++){await fade(.85,90,'#fff');await fade(0,90,'#fff')}await fade(1,250);
+  bEl.classList.remove('hidden');setMon('foe');setMon('me');meEl.style.opacity=0;hideText();await fade(0,250);
+  await anim(foeEl,[{transform:'translateX(-340px)'},{transform:'none'}],{duration:600,easing:'ease-out'});
+  if(wild)await say(`Um ${nameOf(wild)} selvagem apareceu!`);
+  else await say(`${tr.name} quer batalhar!|${tr.name} enviou ${nameOf(B.foe)}!`);
+  meEl.style.opacity=1;sendOut(meEl);await bsay(`Vai, ${nameOf(B.me)}!`);
+  let result=null;while(!result)result=await turn();
+  await sleep(200);await fade(1,300);bEl.classList.add('hidden');bEl.querySelectorAll('.orb').forEach(o=>o.remove());hideText();
+  mode='world';B=null;await fade(0,300);return result}
+
+async function turn(){
+  setText(`O que ${nameOf(B.me)} vai fazer?`,true);
+  const act=await choose(['LUTAR','MOCHILA','EQUIPE','FUGIR'],{cols:2,cancel:false,cls:'bmenu'});
+  let mine=null;
+  if(act===0){setText('',false);hideText();const mv=await choose(B.me.moves.map(id=>{const m=MOVES[id];return`<span>${m.n}</span><small>${pill(m.t)} ${m.p?m.p+' POD':'efeito'}</small>`}),{cols:2,cls:'moves'});
+    if(mv<0)return null;mine={k:'move',id:B.me.moves[mv]}}
+  else if(act===1){hideText();const r=await battleBag();if(!r)return null;if(r==='caught')return'caught';mine={k:'done'}}
+  else if(act===2){hideText();const i=await partyMenu('Trocar por qual cristalon?');if(i<0)return null;const m=G.party[i];
+    if(m===B.me){await say(`${nameOf(m)} já está lutando!`);return null}if(m.hp<=0){await say(`${nameOf(m)} não tem energia para lutar!`);return null}
+    await doSwitch(m);mine={k:'done'}}
+  else{if(!B.wild){await say('Não dá para fugir de uma batalha contra um domador!');return null}
+    B.esc=(B.esc||0)+1;const ms=stats(B.me).spd,fs=stats(B.foe).spd;const odds=ms>=fs?1:(ms*128/fs+30*B.esc)/256;
+    if(Math.random()<odds){SFX.door();await say('Você fugiu em segurança!');return'run'}await bsay('Não foi possível fugir!');mine={k:'done'}}
+  hideText();
+  const foeMove=pickFoeMove();
+  if(mine.k==='move'){const ms=stats(B.me).spd*stageMul(B.stg.me.spd),fs=stats(B.foe).spd*stageMul(B.stg.foe.spd);
+    const meFirst=ms>fs||(ms===fs&&Math.random()<.5);
+    const order=meFirst?[['me',mine.id],['foe',foeMove]]:[['foe',foeMove],['me',mine.id]];
+    for(const[side,id] of order){await useMove(side,id);const r=await checkFaint();if(r!==undefined)return r}}
+  else{await useMove('foe',foeMove);const r=await checkFaint();if(r!==undefined)return r}
+  return null}
+function pickFoeMove(){const mv=B.foe.moves;if(B.wild)return mv[rnd(0,mv.length-1)];
+  const ft=SPECIES[B.foe.sp].type,tt=SPECIES[B.me.sp].type;
+  const sc=mv.map(id=>{const m=MOVES[id];return m.p?m.p*effOf(m.t,tt)*(m.t===ft?1.5:1)*(.8+Math.random()*.4):18+Math.random()*20});
+  return mv[sc.indexOf(Math.max(...sc))]}
+// retorna undefined se a batalha continua normalmente neste turno; null para encerrar o turno; ou um resultado final
+async function checkFaint(){
+  if(B.foe.hp<=0){const r=await foeFainted();return r===null?null:r}
+  if(B.me.hp<=0){const r=await meFainted();return r===null?null:r}}
+async function useMove(side,id){const user=side==='me'?B.me:B.foe,tgt=side==='me'?B.foe:B.me,os=side==='me'?'foe':'me',m=MOVES[id];
+  const uEl=side==='me'?meEl:foeEl,tEl=side==='me'?foeEl:meEl;
+  await bsay(`${label(side)} usou ${m.n}!`);
+  if(Math.random()*100>=m.a){await bsay('Mas o ataque errou!');return}
+  if(!m.p){const who=m.fx.who==='self'?side:os,st=B.stg[who],nm={atk:'O ataque',def:'A defesa',spd:'A velocidade'}[m.fx.stat];
+    await anim(uEl,[{transform:'none'},{transform:'translateY(-10px)'},{transform:'none'}],{duration:300});
+    if(Math.abs(st[m.fx.stat]+m.fx.d)>6){await bsay('Mas nada aconteceu!');return}
+    st[m.fx.stat]+=m.fx.d;await bsay(`${nm} de ${label(who)} ${m.fx.d>0?'aumentou':'diminuiu'}!`);return}
+  const L=user.lvl,A=stats(user).atk*stageMul(B.stg[side].atk),D=stats(tgt).def*stageMul(B.stg[os].def);
+  const eff=effOf(m.t,SPECIES[tgt.sp].type),stab=SPECIES[user.sp].type===m.t?1.5:1,crit=Math.random()<1/16;
+  const dmg=Math.max(1,Math.floor((Math.floor(Math.floor(2*L/5+2)*m.p*A/D/50)+2)*stab*eff*(crit?1.5:1)*(.85+Math.random()*.15)));
+  const dx=side==='me'?26:-26,dy=side==='me'?-12:12;
+  await anim(uEl,[{transform:'none'},{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:240,easing:'ease-out'});
+  const fx=document.createElement('div');fx.className='fx '+os;fx.style.setProperty('--tc',TYPES[m.t]);bEl.appendChild(fx);
+  SFX.hit();anim(fx,[{transform:'scale(.2)',opacity:1},{transform:'scale(1.4)',opacity:0}],{duration:380,easing:'ease-out'}).then(()=>fx.remove());
+  await anim(tEl,[{opacity:1,transform:'none'},{opacity:.2,transform:'translateX(-5px)'},{opacity:1,transform:'translateX(5px)'},{opacity:.2,transform:'translateX(-3px)'},{opacity:1,transform:'none'}],{duration:420});
+  tgt.hp=Math.max(0,tgt.hp-dmg);renderInfo(os);await sleep(560);
+  if(crit)await bsay('Um golpe crítico!');
+  if(eff>1)await bsay('É super eficaz!');else if(eff<1)await bsay('Não é muito eficaz...');
+  if(m.drain&&user.hp>0){const h=Math.max(1,Math.floor(dmg/2));user.hp=Math.min(stats(user).hp,user.hp+h);renderInfo(side);await sleep(400);await bsay(`${label(side)} absorveu energia!`)}}
+async function foeFainted(){SFX.faint();await anim(foeEl,[{transform:'none',opacity:1},{transform:'translateY(60px)',opacity:0}],{duration:450,fill:'forwards'});
+  await bsay(`${foeLabel()} desmaiou!`);
+  const gain=Math.max(1,Math.floor(SPECIES[B.foe.sp].yield*B.foe.lvl/7*(B.wild?1:1.5)));
+  if(B.me.hp>0){await bsay(`${nameOf(B.me)} ganhou ${gain} pontos de experiência!`);await gainExp(B.me,gain)}
+  if(!B.wild){B.idx++;if(B.idx<B.team.length){B.foe=B.team[B.idx];B.stg.foe=freshStages();
+      await say(`${B.tr.name} vai enviar ${nameOf(B.foe)}.`);setMon('foe');await sendOut(foeEl);return null}
+    hideText();
+    await say(`Você derrotou ${B.tr.name}!`);if(B.tr.lose)await say(B.tr.lose);G.money+=B.tr.money;await say(`{P} recebeu $${B.tr.money} pela vitória!`)}
+  return'win'}
+async function meFainted(){SFX.faint();await anim(meEl,[{transform:'none',opacity:1},{transform:'translateY(60px)',opacity:0}],{duration:450,fill:'forwards'});
+  await say(`${nameOf(B.me)} desmaiou!`);
+  if(alive().length){for(;;){const i=await partyMenu('Escolha o próximo cristalon',true);const m=G.party[i];
+      if(m&&m.hp>0){B.me=m;B.stg.me=freshStages();setMon('me');sendOut(meEl);await bsay(`Vai, ${nameOf(m)}!`);return null}
+      await say('Esse cristalon não pode lutar!')}}
+  await say('{P} não tem mais cristalons em condições de lutar!|{P} desmaiou...');
+  return'lose'}
+async function doSwitch(m){await bsay(`Volte, ${nameOf(B.me)}!`);await anim(meEl,[{transform:'scale(1)',opacity:1},{transform:'scale(.1)',opacity:0}],{duration:300,fill:'forwards'});
+  B.me=m;B.stg.me=freshStages();setMon('me');sendOut(meEl);await bsay(`Vai, ${nameOf(m)}!`)}
+async function gainExp(m,amt){const mx=expFor(100);m.exp=Math.min(mx,m.exp+amt);
+  while(m.lvl<100&&m.exp>=expFor(m.lvl+1)){if(B&&m===B.me){meInfo.querySelector('.xpbar i').style.width='100%';await sleep(650)}
+    const old=stats(m).hp;m.lvl++;m.hp+=stats(m).hp-old;SFX.level();if(B&&m===B.me)renderInfo('me',true);
+    await say(`${nameOf(m)} subiu para o nível ${m.lvl}!`);
+    for(const[l,id] of SPECIES[m.sp].learn)if(l===m.lvl&&!m.moves.includes(id))await learnMove(m,id)}
+  if(B&&m===B.me){renderInfo('me');await sleep(650)}}
+async function learnMove(m,id){const mv=MOVES[id];
+  if(m.moves.length<4){m.moves.push(id);SFX.item();return say(`${nameOf(m)} aprendeu ${mv.n}!`)}
+  await say(`${nameOf(m)} quer aprender ${mv.n}, mas já conhece 4 golpes.`);
+  setText(`Esquecer um golpe para aprender ${mv.n}?`);
+  if(await choose(['Sim','Não'])===0){setText('Qual golpe esquecer?');const i=await choose(m.moves.map(x=>MOVES[x].n));
+    if(i>=0){const old=MOVES[m.moves[i]].n;m.moves[i]=id;SFX.item();return say(`1, 2 e... pronto! ${nameOf(m)} esqueceu ${old} e aprendeu ${mv.n}!`)}}
+  await say(`${nameOf(m)} não aprendeu ${mv.n}.`)}
+async function battleBag(){setText('Mochila');const c=await choose([`${ITEMS.cristal.n} ×${G.bag.cristal}`,`${ITEMS.pocao.n} ×${G.bag.pocao}`,'Voltar'],{title:'Mochila'});
+  if(c===0){if(!G.bag.cristal){await say('Você não tem Cristais de Captura!');return null}
+    if(!B.wild){await say('Não se pode capturar o cristalon de outro domador!');return null}return throwCrystal()}
+  if(c===1){if(!G.bag.pocao){await say('Você não tem Poções!');return null}const i=await partyMenu('Usar Poção em qual?');if(i<0)return null;
+    const m=G.party[i],mx=stats(m).hp;if(m.hp<=0||m.hp>=mx){await say('Não terá nenhum efeito.');return null}
+    G.bag.pocao--;const h=Math.min(20,mx-m.hp);m.hp+=h;SFX.heal();if(m===B.me){renderInfo('me');await sleep(500)}
+    await bsay(`${nameOf(m)} recuperou ${h} de HP!`);return'used'}
+  return null}
+async function throwCrystal(){G.bag.cristal--;hideText();await bsay(`{P} arremessou um Cristal de Captura!`);
+  const orb=document.createElement('div');orb.className='orb';bEl.appendChild(orb);
+  await anim(orb,[{transform:'translate(-240px,80px) rotate(0)'},{transform:'translate(-120px,-70px) rotate(360deg)',offset:.5},{transform:'translate(0,0) rotate(720deg)'}],{duration:650,easing:'ease-in'});
+  await anim(foeEl,[{transform:'scale(1)',opacity:1,filter:'brightness(1)'},{transform:'scale(0) translateY(40px)',opacity:0,filter:'brightness(4)'}],{duration:400,fill:'forwards'});
+  await anim(orb,[{transform:'translateY(0)'},{transform:'translateY(30px)'},{transform:'translateY(22px)'},{transform:'translateY(30px)'}],{duration:400,fill:'forwards'});
+  const m=B.foe,mx=stats(m).hp,a=(3*mx-2*m.hp)*SPECIES[m.sp].catch/(3*mx);const p=clamp(a/255+.04,0,1);const ok=Math.random()<p;
+  const shakes=ok?3:Math.min(2,Math.floor(Math.random()*4*p+Math.random()*1.5));
+  for(let i=0;i<shakes;i++){await sleep(350);SFX.shake();await anim(orb,[{transform:'translateY(30px) rotate(0)'},{transform:'translateY(30px) rotate(-22deg)'},{transform:'translateY(30px) rotate(22deg)'},{transform:'translateY(30px) rotate(0)'}],{duration:420})}
+  await sleep(300);
+  if(ok){SFX.catch();anim(orb,[{filter:'drop-shadow(0 0 6px #9feaff) brightness(1)'},{filter:'drop-shadow(0 0 16px #fff) brightness(1.8)'},{filter:'drop-shadow(0 0 6px #9feaff) brightness(1)'}],{duration:600});
+    await say(`Pronto! ${nameOf(m)} foi capturado!`);const isNew=!G.caught.includes(m.sp);caught(m.sp);
+    if(isNew)await say(`Os dados de ${nameOf(m)} foram registrados na Cristaldex.`);
+    if(G.party.length<6)G.party.push(m);else{G.box.push(m);await say(`Sua equipe está cheia. ${nameOf(m)} foi enviado ao armazenamento do laboratório.`)}
+    return'caught'}
+  orb.remove();foeEl.getAnimations().forEach(a=>a.cancel());await sendOut(foeEl);
+  await bsay(['Ah, não! O cristalon escapou!','Quase! Faltou pouco!','Argh! Estava tão perto!'][shakes]||'Ah, não! O cristalon escapou!');return'used'}
+
+/* ===================== MENUS ===================== */
+function partyRows(){return G.party.map(m=>{const mx=stats(m).hp,f=m.hp/mx;
+  return`<span class="thumb">${gem(m.sp)}</span><span class="pm-info${m.hp<=0?' pm-faint':''}"><b>${nameOf(m)}</b><small>Nv ${m.lvl} · ${m.hp}/${mx}</small><span class="hpbar"><i style="width:${f*100}%;background:${hpColor(f)};transition:none"></i></span></span>`})}
+function partyMenu(title,forced=false){return choose(partyRows(),{cls:'party',cancel:!forced,title})}
+function summary(m){const s=SPECIES[m.sp],st=stats(m);
+  return`<div class="sum"><div class="sum-art">${gem(m.sp)}</div><div><h3>${s.name} <small>Nv ${m.lvl}</small></h3>${pill(s.type)}
+  <p>HP ${m.hp}/${st.hp} · ATQ ${st.atk} · DEF ${st.def} · VEL ${st.spd}</p><p>EXP ${m.exp}${m.lvl<100?` · faltam ${expFor(m.lvl+1)-m.exp} para o próximo nível`:''}</p>
+  <ul>${m.moves.map(id=>`<li>${MOVES[id].n} ${pill(MOVES[id].t)}</li>`).join('')}</ul></div><span class="close">A / B para fechar</span></div>`}
+async function startMenu(){
+  for(;;){const opts=[G.flags.starter?'CRISTALDEX':null,G.party.length?'EQUIPE':null,'MOCHILA',esc(G.name).toUpperCase(),'SALVAR',`SOM: ${soundOn?'LIGADO':'DESLIGADO'}`,'FECHAR'].filter(Boolean);
+    const c=await choose(opts,{cls:'start'});const o=opts[c];
+    if(c<0||o==='FECHAR')return;
+    if(o==='CRISTALDEX')await dexMenu();
+    else if(o==='EQUIPE')await teamMenu();
+    else if(o==='MOCHILA')await fieldBag();
+    else if(o==='SALVAR'){setText('Deseja salvar o jogo?');if(await choose(['Sim','Não'])===0){const ok=saveGame();SFX.item();await say(ok?'{P} salvou o jogo.':'Não foi possível salvar neste navegador.')}hideText()}
+    else if(o.startsWith('SOM')){soundOn=!soundOn;SFX.blip()}
+    else{await say(`Domador(a): {P}|Dinheiro: $${G.money}|Cristaldex: ${G.seen.length} vistos · ${G.caught.length} capturados`)}}}
+async function teamMenu(){for(;;){const i=await partyMenu('Sua equipe');if(i<0)return;const m=G.party[i];
+  const c=await choose(['Ver detalhes','Colocar à frente','Cancelar'],{title:nameOf(m)});
+  if(c===0)await showPanel(summary(m));else if(c===1&&i>0){G.party.splice(i,1);G.party.unshift(m);SFX.blip()}}}
+async function fieldBag(){for(;;){const c=await choose([`${ITEMS.cristal.n} ×${G.bag.cristal}`,`${ITEMS.pocao.n} ×${G.bag.pocao}`,'Voltar'],{title:`Mochila · $${G.money}`});
+  if(c<0||c===2)return;
+  if(c===0){await say('Use os Cristais de Captura durante batalhas contra cristalons selvagens.');hideText();continue}
+  if(!G.bag.pocao){await say('Você não tem Poções.');hideText();continue}if(!G.party.length)continue;
+  const i=await partyMenu('Usar Poção em qual?');if(i<0)continue;const m=G.party[i],mx=stats(m).hp;
+  if(m.hp<=0||m.hp>=mx){await say('Não terá nenhum efeito.');hideText();continue}
+  G.bag.pocao--;const h=Math.min(20,mx-m.hp);m.hp+=h;SFX.heal();await say(`${nameOf(m)} recuperou ${h} de HP!`);hideText()}}
+async function dexMenu(){let start=0;for(;;){const items=DEX_ORDER.map((sp,i)=>{const s=SPECIES[sp],n='#'+String(i+1).padStart(3,'0');
+    if(G.caught.includes(sp))return`<span class="thumb" style="width:44px;height:44px">${gem(sp)}</span><span class="num">${n}</span>${s.name}`;
+    if(G.seen.includes(sp))return`<span class="thumb" style="width:44px;height:44px;filter:brightness(0) opacity(.45)">${gem(sp)}</span><span class="num">${n}</span>${s.name}`;
+    return`<span class="thumb" style="width:44px;height:44px;opacity:.25">${gem('lumicris').replace(/<svg[\s\S]*<\/svg>/,'')}</span><span class="num">${n}</span>???`});
+  const i=await choose(items,{cols:3,cls:'dex',start,title:`Cristaldex · ${G.seen.length} vistos · ${G.caught.length} capturados`});if(i<0)return;start=i;
+  const sp=DEX_ORDER[i],s=SPECIES[sp];
+  if(G.caught.includes(sp))await showPanel(`<div class="sum"><div class="sum-art">${gem(sp)}</div><div><h3>${s.name}</h3>${pill(s.type)}<p>${s.desc}</p></div><span class="close">A / B para fechar</span></div>`);
+  else if(G.seen.includes(sp))await showPanel(`<div class="sum"><div class="sum-art" style="filter:brightness(0) opacity(.5)">${gem(sp)}</div><div><h3>${s.name}</h3>${pill(s.type)}<p>Você já viu este cristalon, mas ainda não o capturou.</p></div><span class="close">A / B para fechar</span></div>`)}}
+
+/* ===================== TÍTULO E ABERTURA ===================== */
+const crystalSvg='<svg viewBox="0 0 40 52"><path d="M20 2 L36 18 L20 50 L4 18Z" fill="#bff1ff" stroke="#2a4a9a" stroke-width="2.5"/><path d="M4 18 H36 M20 2 L14 18 L20 50 L26 18Z" stroke="#fff" stroke-width="1.5" fill="none"/></svg>';
+function title(){mode='title';const ov=$('#overlay');const save=loadGame();
+  ov.innerHTML=`<div class="title">${['axolume','lavascudo','folhix'].map((k,i)=>`<div class="bg${i===0?' on':''}" style="background-image:url(${SPECIES[k].art})"></div>`).join('')}
+    <div class="logo"><h1>${crystalSvg}CRISTALON${crystalSvg}</h1><p>O DESPERTAR DOS CRISTAIS</p></div><div class="press">Pressione A ou toque para começar</div><div class="ver">Alpha 0.1</div></div>`;
+  const bgs=[...ov.querySelectorAll('.bg')];let k=0;const iv=setInterval(()=>{bgs[k].classList.remove('on');k=(k+1)%3;bgs[k].classList.add('on')},3500);
+  let lock=false;
+  const go=async()=>{if(lock)return;lock=true;SFX.blip();ov.querySelector('.press').classList.add('hidden');
+    const opts=save?['CONTINUAR','NOVO JOGO']:['NOVO JOGO'];const c=await choose(opts,{cls:'title-menu',cancel:true});
+    if(c<0){lock=false;ov.querySelector('.press').classList.remove('hidden');return}
+    if(opts[c]==='NOVO JOGO'&&save){setText('Começar um novo jogo apaga o progresso salvo. Continuar?');const s=await choose(['Não','Sim'],{cls:'center'});hideText();if(s!==1){lock=false;ov.querySelector('.press').classList.remove('hidden');return}}
+    clearInterval(iv);popH(h);await fade(1,400);ov.innerHTML='';
+    if(opts[c]==='CONTINUAR'){G=save;startWorld()}else intro()};
+  const h=b=>{if(b==='a'||b==='start')go()};pushH(h);ov.firstElementChild.addEventListener('click',()=>{if(handlers[handlers.length-1]===h)go()})}
+async function intro(){const ov=$('#overlay');G=newGame('');
+  ov.innerHTML=`<div class="intro"><div class="trio">${['axolume','lavascudo','folhix'].map(k=>gem(k)).join('')}</div></div>`;await fade(0,400);
+  await say(['Olá! Seja bem-vindo ao mundo de CRISTALON!','Meu nome é Lírio. Todos me chamam de Professora dos Cristais.',
+    'Este mundo é habitado por criaturas chamadas cristalons.','Cada uma nasceu de um fragmento do Grande Cristal e carrega o poder de um elemento.',
+    'Algumas pessoas as têm como companheiras. Outras batalham ao lado delas.','E eu? Eu estudo os cristalons todos os dias. Mas, antes de tudo...','Diga-me: qual é o seu nome?']);
+  hideText();G.name=await askName();
+  await say([`${G.name}! Que nome bonito.`,'Sua grande aventura com os cristalons está prestes a começar!','Um mundo de sonhos e cristais espera por você. Vamos lá!']);
+  hideText();await fade(1,500);ov.innerHTML='';startWorld()}
+function askName(){return new Promise(res=>{const pn=$('#panel');
+  pn.innerHTML=`<form class="nameform"><label for="nm">Seu nome de domador(a):</label><input id="nm" maxlength="10" autocomplete="off" value="Léo"><button type="submit">Confirmar</button></form>`;
+  const f=pn.querySelector('form'),inp=pn.querySelector('input');setTimeout(()=>{inp.focus();inp.select()},50);
+  const h=()=>{};pushH(h);
+  f.addEventListener('submit',e=>{e.preventDefault();const v=inp.value.trim().replace(/\s+/g,' ').slice(0,10)||'Léo';inp.blur();popH(h);pn.innerHTML='';SFX.blip();res(v)})})}
+function startWorld(){P.x=G.x;P.y=G.y;P.dir=G.dir||'down';P.moving=false;mode='world';handlers.length=0;pushH(worldH);
+  fade(0,400).then(()=>{if(!G.flags.starter&&!G.flags.seenStart){G.flags.seenStart=1;runEvent(()=>say('{P}: Hoje é o grande dia! A Profa. Lírio disse para eu passar no laboratório.|(Use o MENU para ver a equipe, a mochila e salvar o jogo.)'))}})}
+
+/* ===================== ESCALA DA TELA ===================== */
+function fit(){const pad=$('#pad'),help=$('#help');const extra=(pad.offsetHeight||0)+(help.offsetHeight||0)+48;
+  const w=Math.max(240,Math.min(innerWidth-32,(innerHeight-extra)*1.5,1056));document.documentElement.style.setProperty('--k',(w/480).toFixed(4))}
+addEventListener('resize',fit);fit();
+for(const k of DEX_ORDER)if(SPECIES[k].img){const i=new Image();i.src=SPECIES[k].img;const j=new Image();j.src=SPECIES[k].art}
+G=newGame('');title();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
